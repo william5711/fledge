@@ -85,13 +85,13 @@ Records are saved as plain JSON in `~/.fledge/data.json` on your own computer. Y
 
 ## Tests
 
-The tracker has 37 tests:
+The tests run on every push through GitHub Actions, on Python 3.9 through 3.13:
 
 ```bash
 python3 -m unittest discover -s tests
 ```
 
-They cover the tracker only. How well an agent follows `SKILL.md` in a real conversation is a separate question, and I'm still testing that.
+They cover the tracker and the evaluation tools, not how well an agent follows `SKILL.md` in a real conversation. For that, `evals/` has 46 scripted conversations with graded outcomes, explained in [evals/README.md](evals/README.md). I haven't published results from them yet.
 
 ## License
 
