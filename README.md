@@ -36,6 +36,23 @@ Then start a new session and try `just spent $23 on groceries`.
 
 It needs Python 3.9 or newer and has no other dependencies. The tests pass on Python 3.9 through 3.13 on Linux and on Python 3.9.6 on macOS.
 
+## Use it with other MCP clients
+
+`scripts/mcp_server.py` exposes the tracker as 50 tools over the Model Context Protocol, so apps other than Claude Code can use the same records. Add this to your client's MCP config, with the full path to your copy:
+
+```json
+{
+  "mcpServers": {
+    "fledge": {
+      "command": "python3",
+      "args": ["/path/to/fledge/scripts/mcp_server.py"]
+    }
+  }
+}
+```
+
+The server uses only the Python standard library. The tools come from the tracker's command parser, so a new tracker command becomes a tool once it has a description. The tests connect to it with the official MCP Python client, and the Claude Code CLI's `mcp list` check connects to it too. I haven't tested how well a model uses these tools in a real conversation, or tried it in other MCP apps.
+
 ## How it works
 
 `SKILL.md` tells the agent how to behave, and `scripts/tracker.py` handles saving and all the math. The agent doesn't add up money on its own, and amounts are stored as whole cents to avoid rounding errors. `references/how-to.md` is the household guide, which the agent only reads when it needs it.

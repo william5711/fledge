@@ -865,7 +865,7 @@ def cmd_agenda_add(store, args):
 
 def cmd_agenda_import(store, args):
     try:
-        rows = json.load(sys.stdin)
+        rows = json.loads(args.rows) if args.rows is not None else json.load(sys.stdin)
     except ValueError:
         raise UserError("The import must be a JSON list.")
     if not isinstance(rows, list):
@@ -1733,6 +1733,7 @@ def build_parser():
     command.add_argument("--type", choices=DEADLINE_TYPES, help="For deadlines only")
     command = add_command(agenda, "import", cmd_agenda_import)
     command.add_argument("--course")
+    command.add_argument("--rows", help="JSON list of deadlines. Read from stdin if left out.")
     command = add_command(agenda, "done", cmd_agenda_done)
     command.add_argument("id")
     command = add_command(agenda, "remove", cmd_agenda_remove)
@@ -1831,13 +1832,19 @@ def build_parser():
     return parser
 
 
+def execute(args):
+    """Run one command. The command line and the MCP server both use this."""
+    store = load_store()
+    result = args.handler(store, args)
+    if args.writes:
+        save_store(store)
+    return result
+
+
 def main():
     args = build_parser().parse_args()
     try:
-        store = load_store()
-        result = args.handler(store, args)
-        if args.writes:
-            save_store(store)
+        result = execute(args)
     except UserError as error:
         print(json.dumps({"error": str(error)}, indent=2))
         return 1
