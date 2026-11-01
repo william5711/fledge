@@ -34,7 +34,7 @@ git clone https://github.com/william5711/fledge.git ~/.claude/skills/fledge
 
 Then start a new session and try `just spent $23 on groceries`.
 
-It needs Python 3.9 or newer and has no other dependencies. I've only run it on Python 3.9.6 on macOS.
+It needs Python 3.9 or newer and has no other dependencies. The tests pass on Python 3.9 through 3.13 on Linux and on Python 3.9.6 on macOS.
 
 ## How it works
 
