@@ -34,6 +34,8 @@ Dates use YYYY-MM-DD. Times use 24-hour HH:MM."""
 
 TOOL_DESCRIPTIONS = {
     "budget_set": "Set the monthly budget, the move-in fund, or both.",
+    "budget_trends": "Compare total and per-category spending across recent months.",
+    "export": "Return all saved records as JSON so the student can back them up or inspect them.",
     "budget_summary": "Show a month's budget position, spending by category, and purchases.",
     "purchase_add": "Save a purchase that was bought or is planned.",
     "purchase_buy": "Mark a planned purchase as bought.",
@@ -119,6 +121,7 @@ PARAMETER_DESCRIPTIONS = {
     "notes": "Allergies, diet, and available equipment.",
     "every_days": "Days between repeats.",
     "weeks": "How many weeks to show.",
+    "months": "How many months to include, counting this one.",
     "all": "Include finished or inactive records.",
 }
 

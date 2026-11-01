@@ -66,10 +66,6 @@ def run_tracker(args, env):
     return json.loads(done.stdout)
 
 
-def load_store(path):
-    return json.loads(path.read_text()) if path.exists() else None
-
-
 def parse_stream(text):
     """Pull the reply, tool calls, and cost out of the CLI's event stream."""
     info = {"reply": "", "tools": [], "cost_usd": 0.0, "session_id": None, "model": None, "is_error": False}
@@ -172,7 +168,7 @@ def run_case(case, seeds, mode, rep, options):
     judge_costs = []
     workdir = Path(tempfile.mkdtemp(prefix="fledge-eval-"))
     try:
-        data_file = workdir / "records" / "data.json"
+        data_file = workdir / "records" / "fledge.db"
         env = base_env(data_file)
         if mode == "with_skill":
             skill_dir = workdir / ".claude" / "skills" / "fledge"
@@ -184,7 +180,7 @@ def run_case(case, seeds, mode, rep, options):
             output = run_tracker(command, env)
             if "error" in output:
                 raise AgentError(f"Seed command failed: {command}: {output['error']}")
-        seeded_store = load_store(data_file)
+        seeded_store = run_tracker(["export"], env)
 
         session_id = None
         keep_session = len(case["turns"]) > 1
@@ -200,8 +196,8 @@ def run_case(case, seeds, mode, rep, options):
         record["triggered"] = skill_was_used(record["tools"])
 
         run = {
-            "store": load_store(data_file) or {},
-            "seeded_store": seeded_store or {},
+            "store": run_tracker(["export"], env),
+            "seeded_store": seeded_store,
             "reply": record["reply"],
             "triggered": record["triggered"],
             "tracker": lambda args: run_tracker(args, env),

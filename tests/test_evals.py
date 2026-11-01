@@ -176,7 +176,7 @@ class CaseFileTest(unittest.TestCase):
             with self.subTest(case=case["id"]), tempfile.TemporaryDirectory() as folder:
                 env = dict(
                     os.environ,
-                    FLEDGE_DATA=str(Path(folder) / "data.json"),
+                    FLEDGE_DATA=str(Path(folder) / "fledge.db"),
                     FLEDGE_TODAY="2026-11-10",
                 )
                 for command in self.data["seeds"].get(case.get("seed"), []) + case.get("setup", []):
@@ -187,7 +187,7 @@ class CaseFileTest(unittest.TestCase):
             for check in case["checks"]:
                 if check["type"] == "tracker":
                     with tempfile.TemporaryDirectory() as folder:
-                        env = dict(os.environ, FLEDGE_DATA=str(Path(folder) / "data.json"))
+                        env = dict(os.environ, FLEDGE_DATA=str(Path(folder) / "fledge.db"))
                         self.assertNotIn("error", run_tracker(check["args"], env))
 
     def test_both_splits_have_cases(self):

@@ -38,7 +38,7 @@ It needs Python 3.9 or newer and has no other dependencies. The tests pass on Py
 
 ## Use it with other MCP clients
 
-`scripts/mcp_server.py` exposes the tracker as 50 tools over the Model Context Protocol, so apps other than Claude Code can use the same records. Add this to your client's MCP config, with the full path to your copy:
+`scripts/mcp_server.py` exposes the tracker as 52 tools over the Model Context Protocol, so apps other than Claude Code can use the same records. Add this to your client's MCP config, with the full path to your copy:
 
 ```json
 {
@@ -55,7 +55,7 @@ The server uses only the Python standard library. The tools come from the tracke
 
 ## How it works
 
-`SKILL.md` tells the agent how to behave, and `scripts/tracker.py` handles saving and all the math. The agent doesn't add up money on its own, and amounts are stored as whole cents to avoid rounding errors. `references/how-to.md` is the household guide, which the agent only reads when it needs it.
+`SKILL.md` tells the agent how to behave, and `scripts/tracker.py` handles saving and all the math. The agent doesn't add up money on its own, and amounts are stored as whole cents to avoid rounding errors. Records live in SQLite, with 14 tables, constraints that reject invalid rows, and numbered migrations for schema changes. Each write command holds a lock from reading to saving, so the skill and MCP server can't overwrite each other's changes. `references/how-to.md` is the household guide, which the agent only reads when it needs it.
 
 You can run the tracker directly too. This example uses a date of Nov 10, 2026:
 
@@ -90,7 +90,7 @@ $ python3 scripts/tracker.py afford --amount 90
 
 ## Your data
 
-Records are saved as plain JSON in `~/.fledge/data.json` on your own computer. You can choose another location by setting `FLEDGE_DATA`. The tracker doesn't send anything over the network, but anything you tell the agent also goes through whichever AI service you're using. Don't give it card numbers, passwords, or Social Security numbers.
+Records are saved in a SQLite database at `~/.fledge/fledge.db` on your own computer, readable only by your user account. If you used an earlier version, your `data.json` records are imported automatically and the old file is kept. `python3 scripts/tracker.py export` prints everything as JSON. You can choose another location by setting `FLEDGE_DATA`. The tracker doesn't send anything over the network, but anything you tell the agent also goes through whichever AI service you're using. Don't give it card numbers, passwords, or Social Security numbers.
 
 ## Limits
 

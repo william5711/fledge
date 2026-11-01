@@ -1,11 +1,13 @@
 import json
 import os
+import sqlite3
 import stat
 import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 TRACKER = Path(__file__).resolve().parent.parent / "scripts" / "tracker.py"
 
@@ -14,7 +16,7 @@ class TrackerTest(unittest.TestCase):
     def setUp(self):
         self.folder = tempfile.TemporaryDirectory()
         self.addCleanup(self.folder.cleanup)
-        self.data = Path(self.folder.name) / "nested" / "data.json"
+        self.data = Path(self.folder.name) / "nested" / "fledge.db"
         self.today = "2026-11-10"
 
     def run_cli(self, *args, expect_error=False, stdin=None):
@@ -216,13 +218,14 @@ class TrackerTest(unittest.TestCase):
 
     def test_failed_command_saves_nothing(self):
         self.add_bought("Coffee", "3")
-        before = self.data.read_text()
+        before = self.run_cli("export")
         self.run_cli("purchase", "edit", "p1", "--item", "Changed", "--amount", "bad", expect_error=True)
-        self.assertEqual(self.data.read_text(), before)
+        self.assertEqual(self.run_cli("export"), before)
 
     def test_old_data_files_keep_their_records(self):
         self.data.parent.mkdir(parents=True)
-        self.data.write_text(json.dumps({
+        old_file = self.data.with_name("data.json")
+        old_file.write_text(json.dumps({
             "version": 1,
             "settings": {"monthly_budget_cents": 50000, "movein_fund_cents": None},
             "next_id": {"p": 2, "b": 1, "m": 1, "a": 2},
@@ -241,6 +244,7 @@ class TrackerTest(unittest.TestCase):
         self.assertEqual(self.run_cli("briefing")["events_today"][0]["title"], "Lab")
         self.assertEqual(self.run_cli("chore", "starter")["added"][0]["id"], "c1")
         self.assertEqual(self.add_bought("Tea", "2")["purchase"]["id"], "p2")
+        self.assertIn("Coffee", old_file.read_text())
 
     def test_syllabus_import_skips_duplicates_and_rejects_bad_rows(self):
         rows = json.dumps([
@@ -431,6 +435,148 @@ class TrackerTest(unittest.TestCase):
         review = self.run_cli("review")
         self.assertIsNone(review["pace"])
         self.assertEqual(review["spending"]["total_excluding_bills"], "$0.00")
+
+    def fill_every_table(self):
+        self.run_cli("budget", "set", "--monthly", "1000", "--movein-fund", "500")
+        bill = self.run_cli("bill", "add", "--name", "Rent", "--amount", "600", "--due", "2026-11-09")["bill"]["id"]
+        self.run_cli("bill", "add", "--name", "Tuition", "--amount", "50", "--due", "2026-12-01", "--frequency", "once")
+        self.run_cli("bill", "pay", bill)
+        refunded = self.add_bought("Shoes", "60", "--category", "clothes")["purchase"]["id"]
+        self.run_cli("purchase", "refund", refunded, "--amount", "20.50")
+        self.add_bought("Lamp", "40", "--status", "planned")
+        self.run_cli("movein", "init", "--date", "2027-01-15", "--housing", "apartment")
+        task = self.run_cli("movein", "add", "--title", "Buy fan", "--cost", "25")["task"]["id"]
+        self.run_cli("movein", "done", task, "--actual", "22")
+        self.run_cli("agenda", "add", "--kind", "deadline", "--title", "Midterm", "--date", "2026-12-09",
+                     "--time", "09:00", "--type", "exam", "--course", "BIO 101")
+        self.run_cli("agenda", "add", "--kind", "reminder", "--title", "Call", "--date", "2026-11-09")
+        self.run_cli("schedule", "add", "--kind", "class", "--title", "Bio", "--days", "wed,mon",
+                     "--start", "09:00", "--end", "10:00", "--from", "2026-09-01", "--until", "2026-12-10")
+        self.run_cli("shared", "add", "--item", "Soap", "--amount", "10", "--paid-by", "me", "--split", "Sam,me,Alex")
+        self.run_cli("shared", "settle", "--from", "Alex", "--to", "me", "--amount", "1")
+        self.run_cli("grocery", "add", "--item", "Eggs", "--quantity", "12", "--estimate", "4")
+        self.run_cli("kitchen", "add", "--item", "Milk", "--expires", "2026-11-12")
+        self.run_cli("kitchen", "notes", "peanut allergy")
+        chore = self.run_cli("chore", "add", "--title", "Trash", "--every-days", "3")["chore"]["id"]
+        self.run_cli("chore", "done", chore)
+
+    def test_every_table_survives_a_round_trip_and_json_import(self):
+        self.fill_every_table()
+        exported = self.run_cli("export")
+        self.assertEqual(exported["purchases"][1]["refunded_cents"], 2050)
+        self.assertEqual(exported["schedule"][0]["days"], ["wed", "mon"])
+        self.assertIs(exported["bills"][0]["active"], True)
+        self.assertEqual(list(exported["shared"]["expenses"][0]["shares"]), ["Sam", "me", "Alex"])
+        self.assertEqual(exported["shared"]["settlements"][0]["from"], "Alex")
+
+        # Earlier versions saved this same shape as JSON, so it must import exactly.
+        other = Path(self.folder.name) / "other"
+        other.mkdir()
+        (other / "data.json").write_text(json.dumps(exported))
+        self.data = other / "fledge.db"
+        self.assertEqual(self.run_cli("export"), exported)
+
+    def test_bad_old_json_is_reported_and_kept(self):
+        self.data.parent.mkdir(parents=True)
+        old_file = self.data.with_name("data.json")
+        old_file.write_text("{oops")
+        self.assertIn("data.json", self.run_cli("budget", "summary", expect_error=True)["error"])
+        self.assertEqual(old_file.read_text(), "{oops")
+
+    def test_parallel_writes_keep_every_change(self):
+        # Without a write lock, processes would overwrite each other's purchases and ids.
+        env = dict(os.environ, FLEDGE_DATA=str(self.data), FLEDGE_TODAY=self.today)
+        command = [sys.executable, str(TRACKER), "purchase", "add", "--new", "--amount", "1", "--item"]
+        processes = [
+            subprocess.Popen(command + [f"Item {n}"], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+            for n in range(20)
+        ]
+        for process in processes:
+            _, errors = process.communicate(timeout=60)
+            self.assertEqual(process.returncode, 0, errors)
+        purchases = self.run_cli("export")["purchases"]
+        self.assertEqual(len(purchases), 20)
+        self.assertEqual(len({p["id"] for p in purchases}), 20)
+        self.assertEqual({p["item"] for p in purchases}, {f"Item {n}" for n in range(20)})
+
+    def test_database_rejects_invalid_rows(self):
+        self.add_bought("Coffee", "3")
+        connection = sqlite3.connect(str(self.data), isolation_level=None)
+        self.addCleanup(connection.close)
+        connection.execute("PRAGMA foreign_keys = ON")
+        insert = "INSERT INTO purchases (id, item, amount_cents, category, status, date, bill_id) VALUES (?, ?, ?, ?, ?, ?, ?)"
+        bad_rows = [
+            ("x1", "Bad", -5, "other", "bought", "2026-11-10", None),
+            ("x2", "Bad", 5, "other", "maybe", "2026-11-10", None),
+            ("x3", "Bad", 5, "other", "bought", None, None),
+            ("x4", "Bad", 5, "other", "bought", "2026-11-10", "no-such-bill"),
+        ]
+        for row in bad_rows:
+            with self.subTest(row=row[0]), self.assertRaises(sqlite3.IntegrityError):
+                connection.execute(insert, row)
+        with self.assertRaises(sqlite3.IntegrityError):
+            connection.execute("UPDATE purchases SET refunded_cents = 999999")
+
+    def test_newer_database_is_refused(self):
+        self.add_bought("Coffee", "3")
+        connection = sqlite3.connect(str(self.data))
+        connection.execute("PRAGMA user_version = 99")
+        connection.close()
+        self.assertIn("newer version", self.run_cli("export", expect_error=True)["error"])
+
+    def test_new_migrations_upgrade_an_existing_file_once(self):
+        self.add_bought("Coffee", "3")
+        sys.path.insert(0, str(TRACKER.parent))
+        self.addCleanup(sys.path.pop, 0)
+        import tracker
+        extra = [["CREATE TABLE notes (id TEXT PRIMARY KEY)"]]
+        args = tracker.build_parser().parse_args(["export"])
+        with mock.patch.dict(os.environ, {"FLEDGE_DATA": str(self.data)}):
+            with mock.patch.object(tracker, "MIGRATIONS", tracker.MIGRATIONS + extra):
+                for _ in range(2):
+                    self.assertEqual(tracker.execute(args)["purchases"][0]["item"], "Coffee")
+        connection = sqlite3.connect(str(self.data))
+        self.addCleanup(connection.close)
+        self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 2)
+        tables = [row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type = 'table'")]
+        self.assertIn("notes", tables)
+
+    def test_share_of_zero_cents_saves_no_purchase(self):
+        result = self.run_cli("shared", "add", "--item", "Gum", "--amount", "0.01", "--paid-by", "Alex", "--split", "Alex,me")
+        self.assertEqual(result["expense"]["shares"], {"Alex": "$0.01", "me": "$0.00"})
+        self.assertEqual(self.run_cli("purchase", "list")["purchases"], [])
+
+    def test_trends_group_by_month_with_changes(self):
+        self.add_bought("Old", "100", "--date", "2026-01-15")
+        self.add_bought("Rent", "200", "--category", "home", "--date", "2026-09-05")
+        self.add_bought("Food", "50", "--category", "food", "--date", "2026-09-06")
+        self.add_bought("Food", "30", "--category", "food", "--date", "2026-11-02", "--new")
+        shoes = self.add_bought("Shoes", "40", "--category", "clothes", "--date", "2026-11-03")["purchase"]["id"]
+        self.run_cli("purchase", "refund", shoes, "--amount", "10")
+        self.add_bought("Later", "99", "--date", "2026-12-01")
+        self.add_bought("Plan", "77", "--status", "planned", "--date", "2026-11-04")
+        self.run_cli("movein", "init", "--date", "2027-01-15", "--housing", "dorm")
+        task = self.run_cli("movein", "add", "--title", "Buy fan", "--cost", "25")["task"]["id"]
+        self.run_cli("movein", "done", task, "--actual", "22")
+
+        months = self.run_cli("budget", "trends", "--months", "3")["months"]
+        self.assertEqual([m["month"] for m in months], ["2026-09", "2026-11"])
+        self.assertEqual(months[0]["total"], "$250.00")
+        self.assertIsNone(months[0]["change"])
+        self.assertEqual(months[1]["total"], "$60.00")
+        self.assertEqual(months[1]["previous_month_with_spending"], "2026-09")
+        self.assertEqual(months[1]["change"], "-$190.00")
+        self.assertEqual(months[1]["by_category"], [
+            {"category": "clothes", "spent": "$30.00"}, {"category": "food", "spent": "$30.00"},
+        ])
+        self.run_cli("budget", "trends", "--months", "0", expect_error=True)
+
+    def test_trends_cross_a_year_and_handle_no_file(self):
+        self.assertEqual(self.run_cli("budget", "trends")["months"], [])
+        self.assertFalse(self.data.exists())
+        self.add_bought("Old", "10", "--date", "2025-12-15")
+        months = self.run_cli("budget", "trends", "--months", "12")["months"]
+        self.assertEqual([m["month"] for m in months], ["2025-12"])
 
 
 if __name__ == "__main__":

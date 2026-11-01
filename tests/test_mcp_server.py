@@ -24,7 +24,7 @@ class ServerTestCase(unittest.TestCase):
     def setUp(self):
         self.folder = tempfile.TemporaryDirectory()
         self.addCleanup(self.folder.cleanup)
-        self.data = Path(self.folder.name) / "data.json"
+        self.data = Path(self.folder.name) / "fledge.db"
         self.env = dict(os.environ, FLEDGE_DATA=str(self.data), FLEDGE_TODAY="2026-11-10")
 
 
@@ -84,7 +84,7 @@ class ProtocolTest(ServerTestCase):
 
     def test_every_tracker_command_is_a_described_tool(self):
         tools = self.talk({"jsonrpc": "2.0", "id": 1, "method": "tools/list"})[0]["result"]["tools"]
-        self.assertEqual(len(tools), 50)
+        self.assertEqual(len(tools), 52)
         self.assertEqual({t["name"] for t in tools}, set(mcp_server.TOOL_DESCRIPTIONS))
         for tool in tools:
             self.assertTrue(tool["description"])
@@ -145,7 +145,7 @@ class ProtocolTest(ServerTestCase):
                 result = self.call(name, **arguments)
                 self.assertTrue(result["isError"])
                 self.assertIn(expected, result["content"][0]["text"])
-        self.assertFalse(self.data.exists())
+        self.assertEqual(self.call_json("export")["purchases"], [])
 
     def test_import_requires_rows_so_it_never_reads_the_protocol_stream(self):
         replies = self.talk(
@@ -189,7 +189,7 @@ class OfficialClientTest(ServerTestCase):
                 self.assertTrue(started.instructions)
 
                 tools = await session.list_tools()
-                self.assertEqual(len(tools.tools), 50)
+                self.assertEqual(len(tools.tools), 52)
 
                 await session.call_tool("budget_set", {"monthly": "1200"})
                 saved = await session.call_tool(

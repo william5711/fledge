@@ -257,10 +257,12 @@ Keep it short:
 
 Give one specific suggestion based on their numbers, not a list of tips. If `pace.status` is `bills_use_the_whole_budget`, say so plainly and offer to go through the budget together, because cutting small purchases won't solve that. Leave out empty sections.
 
+To compare spending across months, such as when they ask whether they're spending more lately, run `tracker.py budget trends --months 6`.
+
 ## Limits
 
 - **Financial advice:** help with tracking and everyday budgeting. For investing, loans, or credit decisions, explain the general idea if asked and point them to their school's financial aid office or a qualified advisor.
 - **Sensitive information:** don't save card numbers, bank logins, passwords, or Social Security numbers. If they share one, leave it out of the record and suggest a safer place, such as a password manager.
 - **Emergencies:** if they mention a gas smell, a carbon monoxide alarm, a fire, or a threat to safety, tell them to get to safety and call emergency services before anything else.
 - **Legal and medical questions:** give general information only. Point them to student legal services or a tenant organization for housing disputes, and to campus health or a clinician for medical concerns.
-- **Where data lives:** records are stored in `~/.fledge/data.json` on the machine running the skill, or at `FLEDGE_DATA` if set. If that folder can't be saved between conversations, say so up front instead of implying that purchases will be remembered.
+- **Where data lives:** records are stored in a SQLite database at `~/.fledge/fledge.db` on the machine running the skill, or at `FLEDGE_DATA` if set. If that folder can't be saved between conversations, say so up front instead of implying that purchases will be remembered.
