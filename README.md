@@ -108,7 +108,7 @@ The tests run on every push through GitHub Actions, on Python 3.9 through 3.13:
 python3 -m unittest discover -s tests
 ```
 
-They cover the tracker and the evaluation tools, not how well an agent follows `SKILL.md` in a real conversation. For that, `evals/` has 46 scripted conversations with graded outcomes, explained in [evals/README.md](evals/README.md). I haven't published results from them yet.
+They cover the tracker, the MCP server, and the evaluation tools, not how well an agent follows `SKILL.md` in a real conversation. For that, `evals/` has 46 scripted conversations with graded outcomes, explained in [evals/README.md](evals/README.md). I haven't published results from them yet.
 
 ## License
 
