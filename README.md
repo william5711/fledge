@@ -1,5 +1,10 @@
 # Fledge
 
+<p align="center">
+  <img src="docs/tracker.png" alt="Terminal showing the tracker saving a purchase and answering whether a $90 purchase fits the budget" width="800">
+  <br><em>The tracker the agent calls, logging a purchase and answering "can I afford this?" on sample data.</em>
+</p>
+
 An agent skill for new college students who are about to live on their own.
 
 The idea for this project started in summer 2026. I wanted to help students at the point where independent life begins. Living alone and managing your own money both happen for the first time, usually along with rent, a lease, and a class schedule nobody else is keeping track of. Most of this is easy to learn, but it is also easy to miss a due date while you are learning.
