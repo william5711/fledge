@@ -528,13 +528,13 @@ class TrackerTest(unittest.TestCase):
         self.add_bought("Coffee", "3")
         sys.path.insert(0, str(TRACKER.parent))
         self.addCleanup(sys.path.pop, 0)
-        import tracker
+        from fledge import cli, storage
         extra = [["CREATE TABLE notes (id TEXT PRIMARY KEY)"]]
-        args = tracker.build_parser().parse_args(["export"])
+        args = cli.build_parser().parse_args(["export"])
         with mock.patch.dict(os.environ, {"FLEDGE_DATA": str(self.data)}):
-            with mock.patch.object(tracker, "MIGRATIONS", tracker.MIGRATIONS + extra):
+            with mock.patch.object(storage, "MIGRATIONS", storage.MIGRATIONS + extra):
                 for _ in range(2):
-                    self.assertEqual(tracker.execute(args)["purchases"][0]["item"], "Coffee")
+                    self.assertEqual(cli.execute(args)["purchases"][0]["item"], "Coffee")
         connection = sqlite3.connect(str(self.data))
         self.addCleanup(connection.close)
         self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 2)
