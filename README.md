@@ -11,8 +11,6 @@ The idea for this project started in summer 2026. I wanted to help students at t
 
 You talk to the agent in normal sentences. Tell it you just spent $23 on groceries and it saves the purchase and tells you what's left this month. Ask whether you can afford a $90 jacket and it checks your bills and other plans before answering.
 
-Built with help from Claude.
-
 ## What it does
 
 - Daily briefing with classes, events, reminders, bills, deadlines, chores, and money left
