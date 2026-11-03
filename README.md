@@ -73,7 +73,7 @@ The server uses only the Python standard library. The tools come from the tracke
 
 ## How it works
 
-`SKILL.md` tells the agent how to behave, and `scripts/tracker.py` handles saving and all the math. The agent doesn't add up money on its own, and amounts are stored as whole cents to avoid rounding errors. Records live in SQLite, with 14 tables, constraints that reject invalid rows, and numbered migrations for schema changes. Each write command holds a lock from reading to saving, so the skill and MCP server can't overwrite each other's changes. `references/how-to.md` is the household guide, which the agent only reads when it needs it.
+`SKILL.md` tells the agent how to behave, and `scripts/tracker.py` handles saving and all the math. Its code is in the `scripts/fledge/` package, with one module for each area (budget, purchases, bills, move-in, agenda, schedule, roommates, kitchen, chores, and reports), plus `storage.py` for the database and `cli.py` for the command parser. The agent doesn't add up money on its own, and amounts are stored as whole cents to avoid rounding errors. Records live in SQLite, with 14 tables, constraints that reject invalid rows, and numbered migrations for schema changes. Each write command holds a lock from reading to saving, so the skill and MCP server can't overwrite each other's changes. `references/how-to.md` is the household guide, which the agent only reads when it needs it.
 
 | Path | Contents |
 |---|---|

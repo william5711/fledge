@@ -14,7 +14,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import tracker  # noqa: E402
+from fledge.cli import build_parser, execute  # noqa: E402
+from fledge.common import UserError  # noqa: E402
 
 SERVER_NAME = "fledge"
 SERVER_VERSION = "1.0.0"
@@ -176,11 +177,11 @@ class Tool:
         by_dest = {action.dest: action for action in self.actions}
         unknown = sorted(set(arguments) - set(by_dest))
         if unknown:
-            raise tracker.UserError(f"Unknown arguments: {', '.join(unknown)}.")
+            raise UserError(f"Unknown arguments: {', '.join(unknown)}.")
         required = self.schema().get("required", [])
         missing = [name for name in required if arguments.get(name) is None]
         if missing:
-            raise tracker.UserError(f"Missing arguments: {', '.join(missing)}.")
+            raise UserError(f"Missing arguments: {', '.join(missing)}.")
         values: Dict[str, Any] = {"handler": self.handler, "writes": self.writes}
         for dest, action in by_dest.items():
             value = arguments.get(dest)
@@ -200,18 +201,18 @@ def _convert(dest: str, value: Any, action: argparse.Action) -> Any:
     expected = _json_type(action)
     if expected == "boolean":
         if not isinstance(value, bool):
-            raise tracker.UserError(f"{dest} must be true or false.")
+            raise UserError(f"{dest} must be true or false.")
         return value
     if expected == "integer":
         if isinstance(value, bool) or not isinstance(value, int):
-            raise tracker.UserError(f"{dest} must be a whole number.")
+            raise UserError(f"{dest} must be a whole number.")
         return value
     # Models often send amounts as numbers, which is harmless to accept.
     if isinstance(value, bool) or not isinstance(value, (str, int, float)):
-        raise tracker.UserError(f"{dest} must be text.")
+        raise UserError(f"{dest} must be text.")
     text = str(value)
     if action.choices and text not in action.choices:
-        raise tracker.UserError(f"{dest} must be one of: {', '.join(map(str, action.choices))}.")
+        raise UserError(f"{dest} must be one of: {', '.join(map(str, action.choices))}.")
     return text
 
 
@@ -224,7 +225,7 @@ def _subcommands(parser: argparse.ArgumentParser) -> Dict[str, argparse.Argument
 
 def build_tools() -> Dict[str, Tool]:
     tools: Dict[str, Tool] = {}
-    for area, area_parser in _subcommands(tracker.build_parser()).items():
+    for area, area_parser in _subcommands(build_parser()).items():
         actions = _subcommands(area_parser)
         if not actions:
             tools[area] = Tool(area, area_parser)
@@ -248,8 +249,8 @@ def call_tool(tools: Dict[str, Tool], params: Dict[str, Any]) -> Tuple[Optional[
     if not isinstance(arguments, dict):
         return None, "Tool arguments must be an object."
     try:
-        return tool_result(json.dumps(tracker.execute(tool.namespace(arguments)), indent=2)), None
-    except tracker.UserError as error:
+        return tool_result(json.dumps(execute(tool.namespace(arguments)), indent=2)), None
+    except UserError as error:
         return tool_result(str(error), is_error=True), None
     except Exception as error:  # A bug in one call shouldn't end the student's session.
         return tool_result(f"The tracker hit an unexpected error: {error}", is_error=True), None
