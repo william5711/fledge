@@ -1,11 +1,26 @@
 # Fledge
 
+[![Tests](https://github.com/william5711/fledge/actions/workflows/tests.yml/badge.svg)](https://github.com/william5711/fledge/actions/workflows/tests.yml)
+
+Fledge is an AI agent skill that helps college students living on their own for the first time keep track of spending, bills, and deadlines through normal conversation. Other AI apps can use the same records through an MCP server.
+
+**Built with:** Python (standard library only), SQLite, SQL, Model Context Protocol, JSON-RPC, unittest, mypy, GitHub Actions, Claude Code
+
+## What I built
+
+- A SQLite data layer with 14 tables, CHECK constraints that reject invalid rows, numbered schema migrations, and a write lock held from read to save so two clients can't overwrite each other's changes
+- Month-over-month spending trends computed in SQL with a CTE and the `LAG` window function
+- An MCP server written from scratch with the standard library, with 52 tools generated from the tracker's command parser and tested with the official MCP Python client
+- Money stored as whole cents, with all math done in code instead of by the model
+- 80 unit tests that run on every push on Python 3.9 through 3.13, plus mypy type checks on the MCP server
+- An evaluation harness with 46 scripted agent conversations, graded by code checks and a model judge, with a held-out test split. I haven't published results yet.
+
 <p align="center">
   <img src="docs/tracker.png" alt="Terminal showing the tracker saving a purchase and answering whether a $90 purchase fits the budget" width="800">
   <br><em>The tracker the agent calls, logging a purchase and answering "can I afford this?" on sample data.</em>
 </p>
 
-An agent skill for new college students who are about to live on their own.
+## Why I built it
 
 The idea for this project started in summer 2026. I wanted to help students at the point where independent life begins. Living alone and managing your own money both happen for the first time, usually along with rent, a lease, and a class schedule nobody else is keeping track of. Most of this is easy to learn, but it is also easy to miss a due date while you are learning.
 
@@ -59,6 +74,15 @@ The server uses only the Python standard library. The tools come from the tracke
 ## How it works
 
 `SKILL.md` tells the agent how to behave, and `scripts/tracker.py` handles saving and all the math. The agent doesn't add up money on its own, and amounts are stored as whole cents to avoid rounding errors. Records live in SQLite, with 14 tables, constraints that reject invalid rows, and numbered migrations for schema changes. Each write command holds a lock from reading to saving, so the skill and MCP server can't overwrite each other's changes. `references/how-to.md` is the household guide, which the agent only reads when it needs it.
+
+| Path | Contents |
+|---|---|
+| `SKILL.md` | Instructions the agent follows |
+| `scripts/tracker.py` | Database, calculations, and command line |
+| `scripts/mcp_server.py` | MCP server |
+| `references/how-to.md` | Household guide |
+| `evals/` | Agent evaluation cases, runner, and grading |
+| `tests/` | Unit tests |
 
 You can run the tracker directly too. This example uses a date of Nov 10, 2026:
 
