@@ -2,7 +2,7 @@
 
 [![Tests](https://github.com/william5711/fledge/actions/workflows/tests.yml/badge.svg)](https://github.com/william5711/fledge/actions/workflows/tests.yml)
 
-Fledge is an AI agent skill that helps college students living on their own for the first time keep track of spending, bills, and deadlines through normal conversation. Other AI apps can use the same records through an MCP server.
+Fledge is an AI agent skill that helps college students living on their own for the first time keep track of spending, bills, and deadlines through normal conversation. MCP clients other than Claude Code can use the same records through an MCP server.
 
 **Built with:** Python (standard library only), SQLite, SQL, Model Context Protocol, JSON-RPC, unittest, mypy, GitHub Actions, Claude Code
 
@@ -22,7 +22,7 @@ Fledge is an AI agent skill that helps college students living on their own for 
 
 ## Why I built it
 
-The idea for this project started in summer 2026. I wanted to help students at the point where independent life begins. Living alone and managing your own money both happen for the first time, usually along with rent, a lease, and a class schedule nobody else is keeping track of. Most of this is easy to learn, but it is also easy to miss a due date while you are learning.
+The idea for this project started in summer 2026. I wanted to help students when they first live on their own and pay their own bills. Living alone and managing your own money both happen for the first time, usually along with rent, a lease, and a class schedule nobody else is keeping track of. Most of this is easy to learn, but it is also easy to miss a due date while you are learning.
 
 You talk to the agent in normal sentences. Tell it you just spent $23 on groceries and it saves the purchase and tells you what's left this month. Ask whether you can afford a $90 jacket and it checks your bills and other plans before answering.
 
@@ -56,7 +56,7 @@ It needs Python 3.9 or newer and has no other dependencies. The tests pass on Py
 
 ## Use it with other MCP clients
 
-`scripts/mcp_server.py` exposes the tracker as 52 tools over the Model Context Protocol, so apps other than Claude Code can use the same records. Add this to your client's MCP config, with the full path to your copy:
+`scripts/mcp_server.py` exposes the tracker as 52 tools over the Model Context Protocol, so MCP clients other than Claude Code can use the same records. Add this to your client's MCP config, with the full path to your copy:
 
 ```json
 {
@@ -69,16 +69,17 @@ It needs Python 3.9 or newer and has no other dependencies. The tests pass on Py
 }
 ```
 
-The server uses only the Python standard library. The tools come from the tracker's command parser, so a new tracker command becomes a tool once it has a description. The tests connect to it with the official MCP Python client, and the Claude Code CLI's `mcp list` check connects to it too. I haven't tested how well a model uses these tools in a real conversation, or tried it in other MCP apps.
+The server uses only the Python standard library. The tools come from the tracker's command parser, so a new tracker command becomes a tool once it has a description. The tests connect to it with the official MCP Python client, and the Claude Code CLI's `mcp list` check connects to it too. I haven't tested how well a model uses these tools in a real conversation, or tried it in other MCP clients.
 
 ## How it works
 
-`SKILL.md` tells the agent how to behave, and `scripts/tracker.py` handles saving and all the math. Its code is in the `scripts/fledge/` package, with one module for each area (budget, purchases, bills, move-in, agenda, schedule, roommates, kitchen, chores, and reports), plus `storage.py` for the database and `cli.py` for the command parser. The agent doesn't add up money on its own, and amounts are stored as whole cents to avoid rounding errors. Records live in SQLite, with 14 tables, constraints that reject invalid rows, and numbered migrations for schema changes. Each write command holds a lock from reading to saving, so the skill and MCP server can't overwrite each other's changes. `references/how-to.md` is the household guide, which the agent only reads when it needs it.
+`SKILL.md` tells the agent how to behave, and `scripts/tracker.py` handles saving and all the math. Its code is in the `scripts/fledge/` package, with one module for each area (budget, purchases, bills, move-in, agenda, schedule, roommates, kitchen, chores, and reports), plus `storage.py` for the database and `cli.py` for the command parser. The agent doesn't add up money on its own. `references/how-to.md` is the household guide, which the agent only reads when it needs it.
 
 | Path | Contents |
 |---|---|
 | `SKILL.md` | Instructions the agent follows |
-| `scripts/tracker.py` | Database, calculations, and command line |
+| `scripts/tracker.py` | Command line entry point |
+| `scripts/fledge/` | Database, calculations, and command parser |
 | `scripts/mcp_server.py` | MCP server |
 | `references/how-to.md` | Household guide |
 | `evals/` | Agent evaluation cases, runner, and grading |
