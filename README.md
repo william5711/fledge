@@ -15,6 +15,8 @@ Fledge is an AI agent skill that helps college students living on their own for 
 - 80 unit tests that run on every push on Python 3.9 through 3.13, plus mypy type checks on the MCP server
 - An evaluation harness with 46 scripted agent conversations, graded by code checks and a model judge, with a held-out test split. I haven't published results yet.
 
+Written in 2026 with help from Claude.
+
 <p align="center">
   <img src="docs/tracker.png" alt="Terminal showing the tracker saving a purchase and answering whether a $90 purchase fits the budget" width="800">
   <br><em>The tracker the agent calls, logging a purchase and answering "can I afford this?" on sample data.</em>
